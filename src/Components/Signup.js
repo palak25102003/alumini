@@ -3,29 +3,85 @@ import { motion } from 'framer-motion';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { FaApple, FaFacebook, FaGoogle, FaGithub } from 'react-icons/fa';
 import { SiX } from 'react-icons/si';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const Signup = () => {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle signup logic here
-    console.log({ firstName, lastName, email, password, agreeToTerms });
+
+    // Validate form
+    if (!agreeToTerms) {
+      setError('Please agree to the Terms & Conditions');
+      toast.error('Please agree to the Terms & Conditions');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+
+      // API call to the backend signup endpoint
+      const response = await axios.post('https://alumini-b5yr.onrender.com/api/auth/signup', {
+        firstName,
+        lastName,
+        email,
+        password
+      });
+
+      // Store the token in localStorage
+      localStorage.setItem('userToken', response.data.token);
+      localStorage.setItem('userData', JSON.stringify({
+        id: response.data._id,
+        firstName: response.data.firstName,
+        lastName: response.data.lastName,
+        email: response.data.email
+      }));
+
+      // Show success toast
+      toast.success('Account created successfully!');
+
+      // Redirect to dashboard or homepage after successful signup
+      navigate('/');
+
+    } catch (err) {
+      console.error('Signup error:', err);
+
+      // Extract error message properly
+      let errorMessage = 'An error occurred during signup';
+
+      if (err.response && err.response.data && err.response.data.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      // Set error state and show toast
+      setError(errorMessage);
+      toast.error(err.response.data.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-purple-900 to-pink-700 p-4">
-      <motion.div 
+      <motion.div
         className="relative w-full max-w-md"
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -35,7 +91,7 @@ const Signup = () => {
         <div className="absolute left-0 bottom-0 w-full h-full overflow-hidden z-0">
           <motion.div
             className="absolute -left-32 bottom-16 w-96 h-96 bg-blue-600 opacity-40 rounded-full blur-3xl"
-            animate={{ 
+            animate={{
               x: [0, 10, 0],
               y: [0, -10, 0],
             }}
@@ -46,11 +102,11 @@ const Signup = () => {
             }}
           />
         </div>
-        
+
         <div className="absolute right-0 bottom-0 w-full h-full overflow-hidden z-0">
           <motion.div
             className="absolute -right-32 bottom-16 w-96 h-96 bg-purple-600 opacity-40 rounded-full blur-3xl"
-            animate={{ 
+            animate={{
               x: [0, -10, 0],
               y: [0, -10, 0],
             }}
@@ -68,9 +124,15 @@ const Signup = () => {
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold text-white mb-1">Create an Account</h2>
             <p className="text-blue-200 text-sm">
-              Already Have an Account? <Link to="/" className="text-blue-300 hover:text-blue-100 underline">Log in</Link>
+              Already Have an Account? <Link to="/login" className="text-blue-300 hover:text-blue-100 underline">Log in</Link>
             </p>
           </div>
+
+          {error && (
+            <div className="mb-4 bg-red-500/30 border border-red-500/50 text-red-100 px-4 py-2 rounded-lg">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
@@ -83,7 +145,7 @@ const Signup = () => {
                   onChange={(e) => setFirstName(e.target.value)}
                   required
                 />
-                
+
                 <input
                   type="text"
                   placeholder="Last name"
@@ -138,9 +200,20 @@ const Signup = () => {
 
               <button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg transition-all duration-200 font-medium"
+                disabled={loading}
+                className={`w - full ${`loading ? 'bg-blue-700' : 'bg-blue-600 hover:bg-blue-500'`} text-white py-3 rounded-lg transition-all duration-200 font-medium flex items-center justify-center`}
               >
-                Create account
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating account...
+                  </>
+                ) : (
+                  'Create account'
+                )}
               </button>
             </div>
           </form>
@@ -160,7 +233,7 @@ const Signup = () => {
             >
               <FaApple size={24} />
             </motion.button>
-            
+
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -169,7 +242,7 @@ const Signup = () => {
             >
               <FaFacebook size={24} />
             </motion.button>
-            
+
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -178,7 +251,7 @@ const Signup = () => {
             >
               <FaGoogle size={24} />
             </motion.button>
-            
+
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -187,7 +260,7 @@ const Signup = () => {
             >
               <SiX size={20} />
             </motion.button>
-            
+
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -198,8 +271,8 @@ const Signup = () => {
             </motion.button>
           </div>
         </div>
-      </motion.div>
-    </div>
+      </motion.div >
+    </div >
   );
 };
 

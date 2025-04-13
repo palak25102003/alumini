@@ -3,22 +3,69 @@ import { motion } from 'framer-motion';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { FaApple, FaFacebook, FaGoogle, FaGithub } from 'react-icons/fa';
 import { SiX } from 'react-icons/si';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const Login = () => {
+    const navigate = useNavigate();
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [agreeToTerms, setAgreeToTerms] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     const togglePasswordVisibility = () => {
         setShowPassword(!showPassword);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Handle login logic here
-        console.log({ email, password, agreeToTerms });
+
+        try {
+            setLoading(true);
+            setError('');
+
+            // API call to the backend login endpoint
+            const response = await axios.post('https://alumini-b5yr.onrender.com/api/auth/login', {
+                email,
+                password
+            });
+
+            // Store the token in localStorage
+            localStorage.setItem('userToken', response.data.token);
+            localStorage.setItem('userData', JSON.stringify({
+                id: response.data._id,
+                firstName: response.data.firstName,
+                lastName: response.data.lastName,
+                email: response.data.email
+            }));
+
+            // Show success toast
+            toast.success('Login successful!');
+
+            // Redirect to dashboard or homepage after successful login
+            navigate('/home');
+
+        } catch (err) {
+            console.error('Login error:', err);
+
+            // Extract error message properly
+            let errorMessage = 'Invalid email or password';
+
+            if (err.response && err.response.data && err.response.data.message) {
+                errorMessage = err.response.data.message;
+            } else if (err.message && typeof err.message === 'string') {
+                errorMessage = err.message;
+            }
+
+            // Set error state and show toast
+            setError(errorMessage);
+            toast.error(errorMessage);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -64,11 +111,17 @@ const Login = () => {
                 {/* Card */}
                 <div className="bg-blue-900/30 backdrop-blur-lg rounded-3xl shadow-2xl p-8 relative z-10 border border-blue-800/50">
                     <div className="text-center mb-8">
-                        <h2 className="text-2xl font-bold text-white mb-1">Login your Account</h2>
+                        <h2 className="text-2xl font-bold text-white mb-1">Login to Your Account</h2>
                         <p className="text-blue-200 text-sm">
-                            Don't Have any Account? <Link to="/signup" className="text-blue-300 hover:text-blue-100 underline">Create new one</Link>
+                            Don't Have an Account? <Link to="/signup" className="text-blue-300 hover:text-blue-100 underline">Create new one</Link>
                         </p>
                     </div>
+
+                    {error && (
+                        <div className="mb-4 bg-red-500/30 border border-red-500/50 text-red-100 px-4 py-2 rounded-lg">
+                            {error}
+                        </div>
+                    )}
 
                     <form onSubmit={handleSubmit}>
                         <div className="space-y-4">
@@ -101,27 +154,41 @@ const Login = () => {
                                 </button>
                             </div>
 
-                            <div className="flex items-center mb-10">
-                                <input
-                                    type="checkbox"
-                                    id="terms"
-                                    className="w-4 h-4 rounded bg-blue-800/50 border-blue-600 text-blue-500 focus:ring-blue-500"
-                                    checked={agreeToTerms}
-                                    onChange={() => setAgreeToTerms(!agreeToTerms)}
-                                />
-                                <label htmlFor="terms" className="ml-2 text-sm text-blue-200">
-                                    I agree to the <a href="#" className="text-blue-300 hover:text-blue-100">Terms & Conditions</a>
-                                </label>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="remember"
+                                        className="w-4 h-4 rounded bg-blue-800/50 border-blue-600 text-blue-500 focus:ring-blue-500"
+                                        checked={rememberMe}
+                                        onChange={() => setRememberMe(!rememberMe)}
+                                    />
+                                    <label htmlFor="remember" className="ml-2 text-sm text-blue-200">
+                                        Remember me
+                                    </label>
+                                </div>
+                                <a href="#" className="text-sm text-blue-300 hover:text-blue-100">
+                                    Forgot password?
+                                </a>
                             </div>
-                            <Link to="/home" className=''>
-                                <button
-                                    type="submit"
-                                    className="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg transition-all duration-200 font-medium"
-                                >
-                                    Login
-                                </button>
-                            </Link>
 
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className={`w - full mt-6 ${`loading ? 'bg-blue-700' : 'bg-blue-600 hover:bg-blue-500'`} text-white py-3 rounded-lg transition-all duration-200 font-medium flex items-center justify-center`}
+                            >
+                                {loading ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Logging in...
+                                    </>
+                                ) : (
+                                    'Login'
+                                )}
+                            </button>
                         </div>
                     </form>
 
@@ -178,8 +245,8 @@ const Login = () => {
                         </motion.button>
                     </div>
                 </div>
-            </motion.div>
-        </div>
+            </motion.div >
+        </div >
     );
 };
 
